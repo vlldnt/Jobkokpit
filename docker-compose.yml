@@ -1,0 +1,23 @@
+# Local development services. Production compose (app + Caddy) is added in Phase 3.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: jobai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jobai
+      POSTGRES_PASSWORD: jobai
+      POSTGRES_DB: jobai
+    ports:
+      # Host port 5434 to avoid clashing with other local Postgres instances.
+      - "5434:5432"
+    volumes:
+      - jobai-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobai -d jobai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  jobai-db-data:

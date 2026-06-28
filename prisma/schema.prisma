@@ -1,0 +1,470 @@
+// Job AI CRM — data model.
+// Conventions: cuid ids, createdAt/updatedAt timestamps, soft delete via
+// deletedAt where user-facing records can be "trashed". Every user-owned entity
+// carries userId so all reads/writes can be scoped (IDOR protection), even
+// though the app is single-user today.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity & sessions
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  OWNER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         UserRole @default(OWNER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  sessions      Session[]
+  companies     Company[]
+  offers        JobOffer[]
+  applications  Application[]
+  recruiters    Recruiter[]
+  documents     Document[]
+  interviewPreps InterviewPrep[]
+  emailThreads  EmailThread[]
+  notifications Notification[]
+  agentRuns     AgentRun[]
+  tags          Tag[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Core CRM
+// ---------------------------------------------------------------------------
+
+enum CompanySize {
+  UNKNOWN
+  MICRO
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+model Company {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  website     String?
+  sector      String?
+  size        CompanySize @default(UNKNOWN)
+  location    String?
+  description String?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  offers       JobOffer[]
+  applications Application[]
+  recruiters   Recruiter[]
+
+  @@index([userId])
+  @@index([userId, name])
+}
+
+enum RemoteType {
+  UNKNOWN
+  ONSITE
+  HYBRID
+  REMOTE
+}
+
+enum SeniorityLevel {
+  UNKNOWN
+  INTERN
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+  PRINCIPAL
+}
+
+enum OfferSource {
+  MANUAL
+  IMPORT_URL
+  FRANCE_TRAVAIL
+  ADZUNA
+}
+
+enum OfferStatus {
+  NEW
+  ANALYZED
+  SHORTLISTED
+  APPLIED
+  ARCHIVED
+  EXPIRED
+}
+
+model JobOffer {
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId    String?
+  company      Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  title        String
+  description  String?
+  url          String?
+  location     String?
+  remote       RemoteType     @default(UNKNOWN)
+  contractType String?
+  salaryMin    Int?
+  salaryMax    Int?
+  currency     String?        @default("EUR")
+  seniority    SeniorityLevel @default(UNKNOWN)
+  source       OfferSource    @default(MANUAL)
+  externalId   String?
+  dedupHash    String
+  status       OfferStatus    @default(NEW)
+  postedAt     DateTime?
+  expiresAt    DateTime?
+  raw          Json?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+
+  analysis     OfferAnalysis?
+  applications Application[]
+  tags         OfferTag[]
+
+  @@unique([source, externalId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([userId, dedupHash])
+  @@index([companyId])
+}
+
+model OfferAnalysis {
+  id                   String   @id @default(cuid())
+  offerId              String   @unique
+  offer                JobOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  summary              String
+  execSummary          String?
+  skills               String[]
+  technologies         String[]
+  benefits             String[]
+  salaryEstimate       String?
+  remoteAssessment     String?
+  seniorityAssessment  String?
+  compatibilityScore   Int?
+  suggestions          String[]
+  model                String
+  inputTokens          Int      @default(0)
+  outputTokens         Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+enum ApplicationStatus {
+  DRAFT
+  APPLIED
+  SCREENING
+  INTERVIEW
+  TECHNICAL_TEST
+  OFFER
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+model Application {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offerId      String?
+  offer        JobOffer?         @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  companyId    String?
+  company      Company?          @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  status       ApplicationStatus @default(DRAFT)
+  appliedAt    DateTime?
+  nextActionAt DateTime?
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?
+
+  events         ApplicationEvent[]
+  documents      Document[]
+  interviewPreps InterviewPrep[]
+  emailThreads   EmailThread[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([offerId])
+}
+
+enum ApplicationEventType {
+  CREATED
+  STATUS_CHANGE
+  NOTE
+  EMAIL_SENT
+  EMAIL_RECEIVED
+  DOCUMENT_ADDED
+  FOLLOW_UP
+  INTERVIEW_SCHEDULED
+  OTHER
+}
+
+model ApplicationEvent {
+  id            String               @id @default(cuid())
+  applicationId String
+  application   Application          @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type          ApplicationEventType
+  title         String
+  detail        String?
+  occurredAt    DateTime             @default(now())
+  createdAt     DateTime             @default(now())
+
+  @@index([applicationId, occurredAt])
+}
+
+model Recruiter {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId   String?
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  name        String
+  email       String?
+  phone       String?
+  linkedinUrl String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([userId])
+  @@index([companyId])
+}
+
+enum DocumentType {
+  CV
+  COVER_LETTER
+  PORTFOLIO
+  OTHER
+}
+
+model Document {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  type          DocumentType @default(OTHER)
+  title         String
+  version       Int          @default(1)
+  mimeType      String?
+  storageKey    String?
+  content       String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+
+  @@index([userId])
+  @@index([applicationId])
+}
+
+model InterviewPrep {
+  id                 String       @id @default(cuid())
+  userId             String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationId      String?
+  application        Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  hrQuestions        Json?
+  technicalQuestions Json?
+  quiz               Json?
+  caseStudies        Json?
+  checklist          Json?
+  revisionPlan       Json?
+  model              String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([applicationId])
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model EmailThread {
+  id               String       @id @default(cuid())
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applicationId    String?
+  application      Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  subject          String
+  externalThreadId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  messages EmailMessage[]
+
+  @@index([userId])
+  @@index([applicationId])
+}
+
+model EmailMessage {
+  id        String         @id @default(cuid())
+  threadId  String
+  thread    EmailThread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  direction EmailDirection
+  fromAddr  String
+  toAddr    String
+  subject   String?
+  // Stored encrypted at the application layer (AES-256-GCM).
+  body      String?
+  sentAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  @@index([threadId, sentAt])
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  FOLLOW_UP
+  SYNC
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(INFO)
+  title     String
+  body      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+}
+
+// ---------------------------------------------------------------------------
+// Tags (many-to-many with offers)
+// ---------------------------------------------------------------------------
+
+model Tag {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String?
+  createdAt DateTime   @default(now())
+
+  offers OfferTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model OfferTag {
+  offerId String
+  offer   JobOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  tagId   String
+  tag     Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([offerId, tagId])
+  @@index([tagId])
+}
+
+// ---------------------------------------------------------------------------
+// Observability, audit & RGPD
+// ---------------------------------------------------------------------------
+
+enum AgentKind {
+  JOB_SEARCH
+  ANALYSIS
+  APPLICATION
+  INTERVIEW_PREP
+  QUALITY_CONTROL
+}
+
+enum AgentRunStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model AgentRun {
+  id           String         @id @default(cuid())
+  userId       String?
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  agent        AgentKind
+  status       AgentRunStatus @default(PENDING)
+  model        String?
+  inputTokens  Int?
+  outputTokens Int?
+  costUsd      Decimal?       @db.Decimal(10, 6)
+  durationMs   Int?
+  input        Json?
+  output       Json?
+  error        String?
+  createdAt    DateTime       @default(now())
+
+  @@index([agent, status])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model DataProcessingRecord {
+  id             String   @id @default(cuid())
+  userId         String?
+  purpose        String
+  legalBasis     String?
+  dataCategories String[]
+  retentionDays  Int?
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+}
