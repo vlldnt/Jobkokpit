@@ -23,7 +23,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV SESSION_SECRET="build-time-placeholder-session-secret-0000"
 ENV ENCRYPTION_KEY="0000000000000000000000000000000000000000000000000000000000000000"
 ENV CRON_SECRET="build-time-placeholder-cron"
-ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
+# No credentials — the build never connects, this only satisfies URL validation.
+ENV DATABASE_URL="postgresql://localhost:5432/build?schema=public"
 RUN npx prisma generate
 RUN npm run build
 
