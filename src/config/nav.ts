@@ -10,6 +10,7 @@ import {
   Mail,
   Send,
   Settings,
+  ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -54,6 +55,7 @@ export const navGroups: NavGroup[] = [
   {
     label: "Système",
     items: [
+      { label: "Contrôle qualité", href: "/quality", icon: ShieldCheck },
       { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Historique", href: "/history", icon: History },
       { label: "Configuration", href: "/settings", icon: Settings },

@@ -31,9 +31,12 @@ const envSchema = z.object({
   // plain dotenv, never by the running app, so they are intentionally absent
   // here (Next's env loader would also mangle the "$" in the argon2 hash).
 
-  ANTHROPIC_API_KEY: z.string().default(""),
-  ANTHROPIC_MODEL_DEFAULT: z.string().default("claude-haiku-4-5"),
-  ANTHROPIC_MODEL_COMPLEX: z.string().default("claude-sonnet-4-6"),
+  // LLM access goes through OpenRouter (OpenAI-compatible). Empty key => the
+  // agents fall back to a deterministic local mock so the app stays usable.
+  OPENROUTER_API_KEY: z.string().default(""),
+  OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
+  AI_MODEL_DEFAULT: z.string().default("anthropic/claude-haiku-4.5"),
+  AI_MODEL_COMPLEX: z.string().default("anthropic/claude-sonnet-4.5"),
 
   FRANCE_TRAVAIL_CLIENT_ID: z.string().default(""),
   FRANCE_TRAVAIL_CLIENT_SECRET: z.string().default(""),

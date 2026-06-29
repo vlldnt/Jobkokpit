@@ -25,3 +25,6 @@ export type ActionState =
   | { status: "success"; message?: string };
 
 export const idleAction: ActionState = { status: "idle" };
+
+/** Result returned by delete Server Actions consumed in list views. */
+export type DeleteResult = { ok: boolean; error?: string };

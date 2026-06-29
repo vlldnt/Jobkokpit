@@ -1,0 +1,218 @@
+import "server-only";
+
+import type {
+  OfferSource,
+  OfferStatus,
+  Prisma,
+  RemoteType,
+  SeniorityLevel,
+} from "@prisma/client";
+
+import { db } from "@/lib/db";
+import type { OfferInput } from "./schemas";
+
+const activeWhere = (userId: string): Prisma.JobOfferWhereInput => ({
+  userId,
+  deletedAt: null,
+});
+
+function toData(input: OfferInput, dedupHash: string) {
+  return {
+    title: input.title,
+    companyId: input.companyId ?? null,
+    description: input.description ?? null,
+    url: input.url ?? null,
+    location: input.location ?? null,
+    remote: input.remote as RemoteType,
+    contractType: input.contractType ?? null,
+    salaryMin: input.salaryMin ?? null,
+    salaryMax: input.salaryMax ?? null,
+    currency: input.currency ?? "EUR",
+    seniority: input.seniority as SeniorityLevel,
+    source: input.source as OfferSource,
+    status: input.status as OfferStatus,
+    postedAt: input.postedAt ?? null,
+    expiresAt: input.expiresAt ?? null,
+    dedupHash,
+  };
+}
+
+export async function listOffers(
+  userId: string,
+  { skip, take, search }: { skip: number; take: number; search?: string },
+) {
+  const where: Prisma.JobOfferWhereInput = {
+    ...activeWhere(userId),
+    ...(search ? { title: { contains: search, mode: "insensitive" } } : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    db.jobOffer.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take,
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        remote: true,
+        location: true,
+        updatedAt: true,
+        company: { select: { name: true } },
+      },
+    }),
+    db.jobOffer.count({ where }),
+  ]);
+
+  return { items, total };
+}
+
+export function getOffer(userId: string, id: string) {
+  return db.jobOffer.findFirst({ where: { id, ...activeWhere(userId) } });
+}
+
+/** Full offer for the detail view: linked company + persisted AI analysis. */
+export function getOfferDetail(userId: string, id: string) {
+  return db.jobOffer.findFirst({
+    where: { id, ...activeWhere(userId) },
+    include: {
+      company: { select: { id: true, name: true } },
+      analysis: true,
+    },
+  });
+}
+
+export type AnalysisFields = {
+  summary: string;
+  execSummary: string | null;
+  skills: string[];
+  technologies: string[];
+  benefits: string[];
+  salaryEstimate: string | null;
+  remoteAssessment: string | null;
+  seniorityAssessment: string | null;
+  compatibilityScore: number | null;
+  suggestions: string[];
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+};
+
+/**
+ * Upsert the 1-1 analysis and promote a still-NEW offer to ANALYZED, atomically.
+ * Ownership is verified by the caller before invoking this.
+ */
+export function saveAnalysis(offerId: string, fields: AnalysisFields) {
+  return db.$transaction([
+    db.offerAnalysis.upsert({
+      where: { offerId },
+      create: { offerId, ...fields },
+      update: fields,
+    }),
+    db.jobOffer.updateMany({
+      where: { id: offerId, status: "NEW" },
+      data: { status: "ANALYZED" },
+    }),
+  ]);
+}
+
+export function listOfferOptions(userId: string) {
+  return db.jobOffer.findMany({
+    where: activeWhere(userId),
+    orderBy: { updatedAt: "desc" },
+    take: 200,
+    select: { id: true, title: true },
+  });
+}
+
+/** Find a non-deleted offer with the same dedup hash (manual duplicate guard). */
+export function findByDedupHash(
+  userId: string,
+  dedupHash: string,
+  excludeId?: string,
+) {
+  return db.jobOffer.findFirst({
+    where: {
+      ...activeWhere(userId),
+      dedupHash,
+      ...(excludeId ? { id: { not: excludeId } } : {}),
+    },
+    select: { id: true },
+  });
+}
+
+export function createOffer(
+  userId: string,
+  input: OfferInput,
+  dedupHash: string,
+) {
+  return db.jobOffer.create({ data: { ...toData(input, dedupHash), userId } });
+}
+
+export function updateOffer(
+  userId: string,
+  id: string,
+  input: OfferInput,
+  dedupHash: string,
+) {
+  return db.jobOffer.updateMany({
+    where: { id, ...activeWhere(userId) },
+    data: toData(input, dedupHash),
+  });
+}
+
+export function softDeleteOffer(userId: string, id: string) {
+  return db.jobOffer.updateMany({
+    where: { id, ...activeWhere(userId) },
+    data: { deletedAt: new Date() },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Ingestion (Agent 1 — job search sync & manual import)
+// ---------------------------------------------------------------------------
+
+export type IngestData = {
+  title: string;
+  companyId: string | null;
+  description: string | null;
+  url: string | null;
+  location: string | null;
+  remote: RemoteType;
+  contractType: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  currency: string | null;
+  seniority: SeniorityLevel;
+  source: OfferSource;
+  externalId: string | null;
+  postedAt: Date | null;
+  dedupHash: string;
+  raw: unknown;
+};
+
+/** Global guard against re-importing the same provider offer (matches the
+ * `@@unique([source, externalId])` constraint). */
+export function findOfferByExternal(source: OfferSource, externalId: string) {
+  return db.jobOffer.findFirst({
+    where: { source, externalId },
+    select: { id: true },
+  });
+}
+
+export function createIngestedOffer(userId: string, data: IngestData) {
+  const { raw, ...rest } = data;
+  return db.jobOffer.create({
+    data: {
+      ...rest,
+      userId,
+      status: "NEW",
+      raw:
+        raw === undefined || raw === null
+          ? undefined
+          : (JSON.parse(JSON.stringify(raw)) as Prisma.InputJsonValue),
+    },
+    select: { id: true },
+  });
+}

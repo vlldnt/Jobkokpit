@@ -1,0 +1,11 @@
+# Reverse proxy with automatic HTTPS.
+# Set DOMAIN in your environment (e.g. crm.example.com). Defaults to localhost,
+# for which Caddy issues a local self-signed certificate.
+{$DOMAIN:localhost} {
+	encode zstd gzip
+	reverse_proxy app:3000
+
+	# The Next.js app sets its own CSP/HSTS/security headers; Caddy only strips
+	# the server banner here.
+	header -Server
+}
