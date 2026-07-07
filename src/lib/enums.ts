@@ -38,6 +38,10 @@ export const offerSourceOptions: Option[] = [
   { value: "ADZUNA", label: "Adzuna" },
   { value: "CAREERJET", label: "Careerjet" },
   { value: "FINDWORK", label: "Findwork" },
+  { value: "REMOTIVE", label: "Remotive" },
+  { value: "ARBEITNOW", label: "Arbeitnow" },
+  { value: "JOBICY", label: "Jobicy" },
+  { value: "JOOBLE", label: "Jooble" },
 ];
 
 export const offerStatusOptions: Option[] = [

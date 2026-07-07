@@ -3,9 +3,13 @@ import "server-only";
 import { extractOffer, stripHtml } from "@/agents/job-search/extract";
 import type { ExtractedOffer } from "@/agents/job-search/extract";
 import { adzunaProvider } from "@/agents/job-search/providers/adzuna";
+import { arbeitnowProvider } from "@/agents/job-search/providers/arbeitnow";
 import { careerjetProvider } from "@/agents/job-search/providers/careerjet";
 import { findworkProvider } from "@/agents/job-search/providers/findwork";
 import { franceTravailProvider } from "@/agents/job-search/providers/france-travail";
+import { jobicyProvider } from "@/agents/job-search/providers/jobicy";
+import { joobleProvider } from "@/agents/job-search/providers/jooble";
+import { remotiveProvider } from "@/agents/job-search/providers/remotive";
 import type {
   JobSourceProvider,
   NormalizedOffer,
@@ -35,6 +39,11 @@ const PROVIDERS: JobSourceProvider[] = [
   franceTravailProvider,
   careerjetProvider,
   findworkProvider,
+  joobleProvider,
+  // Sources full remote (coverage "global") — actives dans la passe télétravail.
+  remotiveProvider,
+  jobicyProvider,
+  arbeitnowProvider,
 ];
 
 export type SyncResult = {

@@ -46,6 +46,8 @@ const envSchema = z.object({
   CAREERJET_API_KEY: z.string().default(""),
   // Findwork.dev: sent as `Authorization: Token <key>`.
   FINDWORK_API_KEY: z.string().default(""),
+  // Jooble: clé passée dans l'URL (POST). Remotive/Arbeitnow/Jobicy sont sans clé.
+  JOOBLE_API_KEY: z.string().default(""),
 
   APP_URL: z.string().url().default("http://localhost:3000"),
 });
