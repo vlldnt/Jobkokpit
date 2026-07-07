@@ -104,3 +104,16 @@ export async function deleteOffer(id: string) {
     before,
   });
 }
+
+/** "Nettoyer la liste" : supprime tout sauf les favoris. Renvoie le nombre supprimé. */
+export async function cleanNonFavorites(): Promise<number> {
+  const user = await requireUser();
+  const res = await repo.softDeleteNonFavorites(user.id);
+  await recordAudit({
+    userId: user.id,
+    action: "offer.clean",
+    entityType: "JobOffer",
+    after: { deleted: res.count, kept: "favorites" },
+  });
+  return res.count;
+}

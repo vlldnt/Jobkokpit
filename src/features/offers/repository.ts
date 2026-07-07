@@ -179,6 +179,14 @@ export function softDeleteOffer(userId: string, id: string) {
   });
 }
 
+/** Soft-delete every offer that is not a favourite (keeps `interested` ones). */
+export function softDeleteNonFavorites(userId: string) {
+  return db.jobOffer.updateMany({
+    where: { ...activeWhere(userId), interested: false },
+    data: { deletedAt: new Date() },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Application workspace (pin/interested, contact, cover letter & email)
 // ---------------------------------------------------------------------------

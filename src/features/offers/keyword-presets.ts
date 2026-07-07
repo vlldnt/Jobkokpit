@@ -104,3 +104,20 @@ export const DEV_KEYWORD_PRESETS = [
   "Security Engineer",
   "Software Architect",
 ] as const;
+
+/**
+ * Sélection pré-cochée par défaut dans le formulaire de synchro (modifiable).
+ * Volontairement restreinte : chaque mot-clé déclenche une recherche par
+ * département + une passe remote, donc trop de mots-clés ralentit la synchro.
+ * Les autres presets restent proposés en suggestions.
+ */
+export const DEFAULT_DEV_KEYWORDS: string[] = [
+  "Développeur Full Stack",
+  "Développeur Front-End",
+  "Développeur Back-End",
+  "Développeur Web",
+  "Développeur React",
+  "Développeur Node.js",
+  "Développeur Python",
+  "Ingénieur logiciel",
+];

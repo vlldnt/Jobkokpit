@@ -67,6 +67,21 @@ export async function deleteOfferAction(id: string): Promise<DeleteResult> {
   }
 }
 
+export type CleanResult =
+  | { ok: true; deleted: number }
+  | { ok: false; error: string };
+
+export async function cleanOffersAction(): Promise<CleanResult> {
+  try {
+    const deleted = await service.cleanNonFavorites();
+    revalidatePath("/offers");
+    return { ok: true, deleted };
+  } catch (error) {
+    const r = toDeleteError(error);
+    return { ok: false, error: r.error ?? "Nettoyage impossible." };
+  }
+}
+
 export async function analyzeOfferAction(id: string): Promise<DeleteResult> {
   try {
     await analyzeOfferById(id);

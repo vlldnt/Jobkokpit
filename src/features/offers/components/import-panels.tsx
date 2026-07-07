@@ -21,7 +21,7 @@ import {
   importOfferUrlAction,
   syncOffersAction,
 } from "../import-actions";
-import { DEV_KEYWORD_PRESETS } from "../keyword-presets";
+import { DEFAULT_DEV_KEYWORDS, DEV_KEYWORD_PRESETS } from "../keyword-presets";
 
 function Feedback({ state }: { state: ActionState }) {
   if (state.status === "success" && state.message) {
@@ -39,7 +39,7 @@ function Feedback({ state }: { state: ActionState }) {
 
 function SyncForm() {
   const [state, action] = useActionState(syncOffersAction, idleAction);
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [keywords, setKeywords] = useState<string[]>(DEFAULT_DEV_KEYWORDS);
   const [draft, setDraft] = useState("");
 
   function addKeyword(raw: string) {
