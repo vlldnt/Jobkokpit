@@ -42,6 +42,10 @@ const envSchema = z.object({
   FRANCE_TRAVAIL_CLIENT_SECRET: z.string().default(""),
   ADZUNA_APP_ID: z.string().default(""),
   ADZUNA_APP_KEY: z.string().default(""),
+  // Careerjet v4: the API key is sent via HTTP Basic auth (key as username).
+  CAREERJET_API_KEY: z.string().default(""),
+  // Findwork.dev: sent as `Authorization: Token <key>`.
+  FINDWORK_API_KEY: z.string().default(""),
 
   APP_URL: z.string().url().default("http://localhost:3000"),
 });

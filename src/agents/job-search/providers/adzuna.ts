@@ -56,7 +56,11 @@ export const adzunaProvider: JobSourceProvider = {
     url.searchParams.set("results_per_page", String(params.limit ?? 20));
     url.searchParams.set("content-type", "application/json");
     if (params.query) url.searchParams.set("what", params.query);
-    if (params.location) url.searchParams.set("where", params.location);
+    if (params.location) {
+      url.searchParams.set("where", params.location);
+      if (params.distance != null)
+        url.searchParams.set("distance", String(params.distance));
+    }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20_000);

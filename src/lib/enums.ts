@@ -36,6 +36,8 @@ export const offerSourceOptions: Option[] = [
   { value: "IMPORT_URL", label: "Import URL" },
   { value: "FRANCE_TRAVAIL", label: "France Travail" },
   { value: "ADZUNA", label: "Adzuna" },
+  { value: "CAREERJET", label: "Careerjet" },
+  { value: "FINDWORK", label: "Findwork" },
 ];
 
 export const offerStatusOptions: Option[] = [

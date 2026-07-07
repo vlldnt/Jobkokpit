@@ -3,6 +3,8 @@ import "server-only";
 import { extractOffer, stripHtml } from "@/agents/job-search/extract";
 import type { ExtractedOffer } from "@/agents/job-search/extract";
 import { adzunaProvider } from "@/agents/job-search/providers/adzuna";
+import { careerjetProvider } from "@/agents/job-search/providers/careerjet";
+import { findworkProvider } from "@/agents/job-search/providers/findwork";
 import { franceTravailProvider } from "@/agents/job-search/providers/france-travail";
 import type {
   JobSourceProvider,
@@ -24,10 +26,16 @@ import { offerDedupHash } from "@/lib/dedup";
 import { logger } from "@/lib/logger";
 import { rateLimit } from "@/lib/rate-limit";
 import { safeFetchText } from "@/lib/ssrf";
+import { isInRegion, REGION_SEARCH_LOCATIONS } from "./region";
 import * as offerRepo from "./repository";
 import type { OfferSource } from "@prisma/client";
 
-const PROVIDERS: JobSourceProvider[] = [adzunaProvider, franceTravailProvider];
+const PROVIDERS: JobSourceProvider[] = [
+  adzunaProvider,
+  franceTravailProvider,
+  careerjetProvider,
+  findworkProvider,
+];
 
 export type SyncResult = {
   created: number;
@@ -97,8 +105,12 @@ async function persistNormalized(
 export async function runOfferSync(
   userId: string,
   params: ProviderSearchParams,
+  keep?: (offer: NormalizedOffer) => boolean,
+  providerFilter?: (provider: JobSourceProvider) => boolean,
 ): Promise<SyncResult> {
-  const active = PROVIDERS.filter((p) => p.isConfigured());
+  const active = PROVIDERS.filter(
+    (p) => p.isConfigured() && (!providerFilter || providerFilter(p)),
+  );
   let created = 0;
   let skipped = 0;
   const errors: string[] = [];
@@ -112,6 +124,7 @@ export async function runOfferSync(
         try {
           const offers = await provider.search(params);
           for (const offer of offers) {
+            if (keep && !keep(offer)) continue;
             const outcome = await persistNormalized(userId, offer);
             if (outcome === "created") created++;
             else skipped++;
@@ -133,27 +146,97 @@ export async function runOfferSync(
   return { ...result, providers: active.map((p) => p.source) };
 }
 
-/** "Synchroniser" Server Action entrypoint (session-scoped, rate-limited). */
-export async function syncOffersForCurrentUser(
-  params: ProviderSearchParams,
-): Promise<SyncResult> {
+export type SyncRequest = {
+  /** Keywords; each runs its own search. Empty => one broad search. */
+  queries: string[];
+  /** Also pull full-remote offers from anywhere in France. Default true. */
+  remoteEverywhere?: boolean;
+  limit?: number;
+};
+
+/**
+ * "Synchroniser" Server Action entrypoint (session-scoped, rate-limited).
+ *
+ * Per keyword:
+ *  1. On-site/hybrid pass — one search per département of the target region
+ *     (Aveyron, Tarn, Lot, Lozère, Cantal), kept only if the offer location is
+ *     actually in that region. Only FR-coverage providers run here.
+ *  2. Remote pass — nationwide, only full-remote offers kept (all providers).
+ *
+ * Deduplication merges overlaps. The whole batch counts as one rate-limit unit.
+ */
+export async function syncOffersForCurrentUser({
+  queries,
+  remoteEverywhere = true,
+  limit = 20,
+}: SyncRequest): Promise<SyncResult & { queries: string[] }> {
   const user = await requireUser();
   const rl = rateLimit(`offer-sync:${user.id}`, 10, 60 * 60 * 1000);
   if (!rl.success) {
     throw new RateLimitError("Trop de synchronisations. Réessayez plus tard.");
   }
-  const res = await runOfferSync(user.id, params);
+
+  const keywords = [...new Set(queries.map((q) => q.trim()).filter(Boolean))];
+  const runs: (string | undefined)[] = keywords.length ? keywords : [undefined];
+
+  let created = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+  const providers = new Set<string>();
+
+  const merge = (res: SyncResult) => {
+    created += res.created;
+    skipped += res.skipped;
+    errors.push(...res.errors);
+    res.providers.forEach((p) => providers.add(p));
+  };
+
+  for (const query of runs) {
+    // Pass 1: on-site/hybrid limited to the target region (per département).
+    for (const location of REGION_SEARCH_LOCATIONS) {
+      merge(
+        await runOfferSync(
+          user.id,
+          { query, location, limit },
+          (offer) => isInRegion(offer.location),
+          (provider) => provider.coverage !== "global",
+        ),
+      );
+    }
+
+    // Pass 2: nationwide — keep only full-remote offers.
+    if (remoteEverywhere) {
+      merge(
+        await runOfferSync(
+          user.id,
+          { query, limit },
+          (offer) => offer.remote === "REMOTE",
+        ),
+      );
+    }
+  }
+
   await recordAudit({
     userId: user.id,
     action: "offer.sync",
     entityType: "JobOffer",
     after: {
-      created: res.created,
-      skipped: res.skipped,
-      providers: res.providers,
+      created,
+      skipped,
+      providers: [...providers],
+      queries: keywords,
+      region: REGION_SEARCH_LOCATIONS,
+      remoteEverywhere,
     },
   });
-  return res;
+
+  return {
+    created,
+    skipped,
+    errors: [...new Set(errors)],
+    providers: [...providers],
+    queries: keywords,
+  };
 }
 
 /** Cron entrypoint: resolve the single owner and sync with the given params. */

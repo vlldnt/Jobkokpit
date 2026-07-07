@@ -39,17 +39,25 @@ function toData(input: OfferInput, dedupHash: string) {
 
 export async function listOffers(
   userId: string,
-  { skip, take, search }: { skip: number; take: number; search?: string },
+  {
+    skip,
+    take,
+    search,
+    favorites = false,
+  }: { skip: number; take: number; search?: string; favorites?: boolean },
 ) {
   const where: Prisma.JobOfferWhereInput = {
     ...activeWhere(userId),
+    // "J'aime pas" met l'offre de côté : jamais affichée dans la liste.
+    dismissed: false,
+    ...(favorites ? { interested: true } : {}),
     ...(search ? { title: { contains: search, mode: "insensitive" } } : {}),
   };
 
   const [items, total] = await Promise.all([
     db.jobOffer.findMany({
       where,
-      orderBy: { updatedAt: "desc" },
+      orderBy: [{ interested: "desc" }, { updatedAt: "desc" }],
       skip,
       take,
       select: {
@@ -58,6 +66,8 @@ export async function listOffers(
         status: true,
         remote: true,
         location: true,
+        contractType: true,
+        interested: true,
         updatedAt: true,
         company: { select: { name: true } },
       },
@@ -166,6 +176,56 @@ export function softDeleteOffer(userId: string, id: string) {
   return db.jobOffer.updateMany({
     where: { id, ...activeWhere(userId) },
     data: { deletedAt: new Date() },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Application workspace (pin/interested, contact, cover letter & email)
+// ---------------------------------------------------------------------------
+
+export function setInterested(userId: string, id: string, interested: boolean) {
+  return db.jobOffer.updateMany({
+    where: { id, ...activeWhere(userId) },
+    data: {
+      interested,
+      interestedAt: interested ? new Date() : null,
+      // Aimer une offre annule une éventuelle mise de côté.
+      ...(interested ? { dismissed: false, dismissedAt: null } : {}),
+    },
+  });
+}
+
+export function setDismissed(userId: string, id: string, dismissed: boolean) {
+  return db.jobOffer.updateMany({
+    where: { id, ...activeWhere(userId) },
+    data: {
+      dismissed,
+      dismissedAt: dismissed ? new Date() : null,
+      // Écarter une offre retire le "J'aime".
+      ...(dismissed ? { interested: false, interestedAt: null } : {}),
+    },
+  });
+}
+
+export function updateContact(
+  userId: string,
+  id: string,
+  data: { contactEmail: string | null; contactPhone: string | null },
+) {
+  return db.jobOffer.updateMany({
+    where: { id, ...activeWhere(userId) },
+    data,
+  });
+}
+
+export function updateApplicationDocs(
+  userId: string,
+  id: string,
+  data: { coverLetter?: string | null; outreachEmail?: string | null },
+) {
+  return db.jobOffer.updateMany({
+    where: { id, ...activeWhere(userId) },
+    data,
   });
 }
 
