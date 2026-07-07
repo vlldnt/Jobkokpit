@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Jobkokpit
 
-## Getting Started
+CRM personnel de recherche d'emploi (orienté développeur) : synchronise des
+offres depuis plusieurs sources, les filtre par zone géographique et modalité
+(présentiel / télétravail), et t'aide à candidater (lettre de motivation et
+email générés par IA, favoris, suivi).
 
-First, run the development server:
+Stack : Next.js · TypeScript · Prisma · PostgreSQL.
+
+## Installation rapide
+
+Prérequis : **Node.js 20+** et **Docker** (pour la base de données).
 
 ```bash
+# 1. Récupérer le projet et les dépendances
+git clone <url-du-repo> Jobkokpit && cd Jobkokpit
+npm install
+
+# 2. Créer le fichier d'environnement
+cp .env.example .env
+#    Renseigne DATABASE_URL (valeur Docker prête à l'emploi indiquée en commentaire).
+
+# 3. Lancer la base de données PostgreSQL
+docker compose up -d db
+
+# 4. Générer les secrets et les coller dans .env
+openssl rand -base64 32   # -> SESSION_SECRET
+openssl rand -hex 32      # -> ENCRYPTION_KEY
+openssl rand -hex 16      # -> CRON_SECRET
+
+# 5. Créer le mot de passe du compte admin et coller le hash dans .env
+#    (dans AUTH_BOOTSTRAP_PASSWORD_HASH ; ajuste aussi AUTH_BOOTSTRAP_EMAIL)
+npm run auth:hash -- "TonMotDePasse"
+
+# 6. Créer les tables et le compte admin
+npm run db:deploy
+npm run db:seed
+
+# 7. Démarrer
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvre **http://localhost:3000** et connecte-toi avec l'email / mot de passe
+définis à l'étape 5.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> L'IA et toutes les sources d'offres sont **optionnelles** : sans aucune clé,
+> l'app démarre et fonctionne (l'IA passe en mode démonstration). Ajoute les
+> clés dans `.env` quand tu veux — voir les commentaires de `.env.example`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Sources d'offres
 
-## Learn More
+Chaque source s'active automatiquement dès que sa clé est présente dans `.env`.
 
-To learn more about Next.js, take a look at the following resources:
+- **Sans clé (déjà actives)** : Remotive, Jobicy, Arbeitnow (offres full remote).
+- **Avec clé** : Adzuna, Careerjet, Findwork, Jooble, France Travail.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Les liens pour obtenir les clés sont dans `.env.example`. On peut aussi importer
+une annonce manuellement (URL ou copier-coller) — utile pour LinkedIn / Indeed.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts utiles
 
-## Deploy on Vercel
+| Commande | Rôle |
+|---|---|
+| `npm run dev` | Lancer en développement |
+| `npm run build` / `npm start` | Build et lancement production |
+| `npm run db:migrate` | Créer/appliquer une migration (dev) |
+| `npm run db:deploy` | Appliquer les migrations |
+| `npm run db:seed` | Créer le compte admin |
+| `npm run db:studio` | Explorer la base (Prisma Studio) |
+| `npm run auth:hash -- "<mdp>"` | Générer un hash de mot de passe |
+| `npm run typecheck` / `npm run lint` | Vérifications TypeScript / ESLint |
+| `npm test` | Tests (Vitest) |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Déploiement (production)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Un stack Docker complet est fourni (app Next.js en mode standalone + Caddy pour
+le HTTPS automatique + migrations + worker de synchronisation + sauvegardes) :
+
+```bash
+cp .env.example .env
+#  - remplis les secrets
+#  - mets DATABASE_URL sur le service interne :  postgresql://jobkokpit:<mdp>@db:5432/jobkokpit
+#  - définis DOMAIN=ton-domaine.fr (pour le certificat HTTPS de Caddy)
+
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Les migrations sont appliquées automatiquement au démarrage (service `migrate`).
+
+## Notes
+
+- La base Docker (dev) écoute sur le port **5434** de l'hôte (pour éviter tout
+  conflit avec un PostgreSQL local). C'est déjà reflété dans `.env.example`.
+- Pour tout arrêter : `docker compose down` (les données sont conservées dans un
+  volume ; ajoute `-v` pour tout effacer).
+
+## Licence
+
+[MIT](LICENSE) © Adrien Vieilledent
