@@ -83,7 +83,11 @@ export const franceTravailProvider: JobSourceProvider = {
     const token = await getToken();
     const url = new URL(SEARCH_URL);
     if (params.query) url.searchParams.set("motsCles", params.query);
-    if (params.location) url.searchParams.set("commune", params.location);
+    if (params.location) {
+      url.searchParams.set("commune", params.location);
+      if (params.distance != null)
+        url.searchParams.set("distance", String(params.distance));
+    }
     url.searchParams.set("range", `0-${(params.limit ?? 20) - 1}`);
 
     const res = await fetch(url, {

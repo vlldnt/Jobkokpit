@@ -23,6 +23,8 @@ export type NormalizedOffer = {
 export type ProviderSearchParams = {
   query?: string;
   location?: string;
+  /** Search radius in km around `location`. Ignored when `location` is unset. */
+  distance?: number;
   limit?: number;
 };
 
@@ -33,6 +35,12 @@ export type ProviderSearchParams = {
  */
 export interface JobSourceProvider {
   readonly source: OfferSource;
+  /**
+   * Geographic coverage. "fr" = relevant for French local (département)
+   * searches; "global" = international/remote-oriented, skipped during the
+   * per-département on-site pass. Defaults to "fr" when omitted.
+   */
+  readonly coverage?: "fr" | "global";
   isConfigured(): boolean;
   search(params: ProviderSearchParams): Promise<NormalizedOffer[]>;
 }

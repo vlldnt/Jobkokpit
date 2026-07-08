@@ -35,13 +35,19 @@ const envSchema = z.object({
   // agents fall back to a deterministic local mock so the app stays usable.
   OPENROUTER_API_KEY: z.string().default(""),
   OPENROUTER_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
-  AI_MODEL_DEFAULT: z.string().default("anthropic/claude-haiku-4.5"),
-  AI_MODEL_COMPLEX: z.string().default("anthropic/claude-sonnet-4.5"),
+  AI_MODEL_DEFAULT: z.string().default("mistralai/mistral-small-2603"),
+  AI_MODEL_COMPLEX: z.string().default("mistralai/mistral-small-2603"),
 
   FRANCE_TRAVAIL_CLIENT_ID: z.string().default(""),
   FRANCE_TRAVAIL_CLIENT_SECRET: z.string().default(""),
   ADZUNA_APP_ID: z.string().default(""),
   ADZUNA_APP_KEY: z.string().default(""),
+  // Careerjet v4: the API key is sent via HTTP Basic auth (key as username).
+  CAREERJET_API_KEY: z.string().default(""),
+  // Findwork.dev: sent as `Authorization: Token <key>`.
+  FINDWORK_API_KEY: z.string().default(""),
+  // Jooble: clé passée dans l'URL (POST). Remotive/Arbeitnow/Jobicy sont sans clé.
+  JOOBLE_API_KEY: z.string().default(""),
 
   APP_URL: z.string().url().default("http://localhost:3000"),
 });

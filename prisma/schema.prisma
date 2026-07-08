@@ -115,6 +115,12 @@ enum OfferSource {
   IMPORT_URL
   FRANCE_TRAVAIL
   ADZUNA
+  CAREERJET
+  FINDWORK
+  REMOTIVE
+  ARBEITNOW
+  JOBICY
+  JOOBLE
 }
 
 enum OfferStatus {
@@ -146,6 +152,14 @@ model JobOffer {
   externalId   String?
   dedupHash    String
   status       OfferStatus    @default(NEW)
+  interested   Boolean        @default(false)
+  interestedAt DateTime?
+  dismissed    Boolean        @default(false)
+  dismissedAt  DateTime?
+  contactEmail String?
+  contactPhone String?
+  coverLetter  String?
+  outreachEmail String?
   postedAt     DateTime?
   expiresAt    DateTime?
   raw          Json?
@@ -161,6 +175,8 @@ model JobOffer {
   @@index([userId])
   @@index([userId, status])
   @@index([userId, dedupHash])
+  @@index([userId, interested])
+  @@index([userId, dismissed])
   @@index([companyId])
 }
 

@@ -15,21 +15,32 @@ export async function syncOffersAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const query = String(formData.get("query") ?? "").trim() || undefined;
-  const location = String(formData.get("location") ?? "").trim() || undefined;
+  const queries = String(formData.get("keywords") ?? "")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // Unchecked checkboxes are absent from FormData.
+  const remoteEverywhere = formData.get("remoteEverywhere") != null;
 
   try {
-    const res = await syncOffersForCurrentUser({ query, location, limit: 20 });
+    const res = await syncOffersForCurrentUser({
+      queries,
+      remoteEverywhere,
+      limit: 20,
+    });
     revalidatePath("/offers");
     const sources = res.providers.length
       ? res.providers.join(", ")
       : "aucune source configurée";
+    const scope = res.queries.length
+      ? ` sur ${res.queries.length} mot(s)-clé(s)`
+      : "";
     const errors = res.errors.length
-      ? ` · Erreurs : ${res.errors.join("; ")}`
+      ? ` · Erreurs : ${[...new Set(res.errors)].join("; ")}`
       : "";
     return {
       status: "success",
-      message: `${res.created} offre(s) ajoutée(s), ${res.skipped} ignorée(s). Sources : ${sources}.${errors}`,
+      message: `${res.created} offre(s) ajoutée(s), ${res.skipped} ignorée(s)${scope}. Sources : ${sources}.${errors}`,
     };
   } catch (error) {
     return toActionError(error);

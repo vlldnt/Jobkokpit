@@ -13,6 +13,7 @@ import {
   totalPages,
   type SearchParams,
 } from "@/lib/pagination";
+import { CleanOffersButton } from "@/features/offers/components/clean-offers-button";
 import { OffersTable } from "@/features/offers/components/offers-table";
 import { listOffers } from "@/features/offers/service";
 
@@ -36,6 +37,7 @@ export default async function OffersPage({
         description="Les offres d'emploi que vous suivez."
         action={
           <div className="flex items-center gap-2">
+            <CleanOffersButton />
             <Button asChild variant="outline">
               <Link href="/offers/import">
                 <Download />

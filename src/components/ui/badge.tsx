@@ -17,6 +17,21 @@ const badgeVariants = cva(
         info: "border-transparent bg-blue-500/15 text-blue-700 dark:text-blue-400",
         destructive:
           "border-transparent bg-destructive/15 text-destructive dark:text-red-400",
+        // Types de contrat — couleurs dédiées, lisibles d'un coup d'œil.
+        stage:
+          "border-transparent bg-violet-500/15 text-violet-700 dark:text-violet-300",
+        alternance:
+          "border-transparent bg-orange-500/15 text-orange-700 dark:text-orange-300",
+        // Stage OU alternance sur le même poste : couleur mixte dédiée.
+        stageAlternance:
+          "border-transparent bg-gradient-to-r from-violet-500/20 to-orange-500/20 text-fuchsia-700 dark:text-fuchsia-300",
+        cdi: "border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+        cdd: "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300",
+        freelance:
+          "border-transparent bg-teal-500/15 text-teal-700 dark:text-teal-300",
+        // Télétravail full — badge bien visible.
+        remote:
+          "border-transparent bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
       },
     },
     defaultVariants: { variant: "default" },
