@@ -154,10 +154,21 @@ function SyncForm() {
             Inclure le full télétravail partout en France
           </label>
 
-          <SubmitButton pendingText="Synchronisation…">
-            Synchroniser
-            {keywords.length > 0 ? ` (${keywords.length})` : ""}
-          </SubmitButton>
+          <div className="flex flex-wrap items-center gap-2">
+            <SubmitButton pendingText="Synchronisation…">
+              Synchroniser France
+              {keywords.length > 0 ? ` (${keywords.length})` : ""}
+            </SubmitButton>
+            {/* Recherche à part, à la demande — full remote Europe hors France. */}
+            <SubmitButton
+              name="scope"
+              value="europe"
+              variant="outline"
+              pendingText="Recherche Europe…"
+            >
+              Rechercher en Europe
+            </SubmitButton>
+          </div>
           <Feedback state={state} />
         </form>
       </CardContent>

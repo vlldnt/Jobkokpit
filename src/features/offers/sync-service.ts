@@ -30,8 +30,9 @@ import { offerDedupHash } from "@/lib/dedup";
 import { logger } from "@/lib/logger";
 import { rateLimit } from "@/lib/rate-limit";
 import { safeFetchText } from "@/lib/ssrf";
-import { isInRegion, REGION_SEARCH_LOCATIONS } from "./region";
+import { isEuropeLocation, isInRegion, REGION_SEARCH_LOCATIONS } from "./region";
 import * as offerRepo from "./repository";
+import { isDevJobTitle } from "./title-filter";
 import type { OfferSource } from "@prisma/client";
 
 const PROVIDERS: JobSourceProvider[] = [
@@ -160,23 +161,34 @@ export type SyncRequest = {
   queries: string[];
   /** Also pull full-remote offers from anywhere in France. Default true. */
   remoteEverywhere?: boolean;
+  /**
+   * "france" (défaut) : région prioritaire + full remote France uniquement.
+   * "europe" : recherche à part, à la demande — full remote Europe hors France.
+   */
+  scope?: "france" | "europe";
   limit?: number;
 };
 
 /**
  * "Synchroniser" Server Action entrypoint (session-scoped, rate-limited).
  *
- * Per keyword:
+ * Scope "france" (défaut), per keyword:
  *  1. On-site/hybrid pass — one search per département of the target region
  *     (Aveyron, Tarn, Lot, Lozère, Cantal), kept only if the offer location is
  *     actually in that region. Only FR-coverage providers run here.
- *  2. Remote pass — nationwide, only full-remote offers kept (all providers).
+ *  2. Remote pass — France only: FR-coverage providers, full-remote offers
+ *     kept, locations Europe hors France écartées.
+ *
+ * Scope "europe" (à la demande, jamais par défaut) : une seule passe sur les
+ * providers "global", ne garde que le full remote localisé en Europe hors
+ * France.
  *
  * Deduplication merges overlaps. The whole batch counts as one rate-limit unit.
  */
 export async function syncOffersForCurrentUser({
   queries,
   remoteEverywhere = true,
+  scope = "france",
   limit = 20,
 }: SyncRequest): Promise<SyncResult & { queries: string[] }> {
   const user = await requireUser();
@@ -201,25 +213,46 @@ export async function syncOffersForCurrentUser({
   };
 
   for (const query of runs) {
+    if (scope === "europe") {
+      // Recherche Europe à part : providers "global", full remote hors France.
+      merge(
+        await runOfferSync(
+          user.id,
+          { query, limit },
+          (offer) =>
+            isDevJobTitle(offer.title) &&
+            offer.remote === "REMOTE" &&
+            isEuropeLocation(offer.location),
+          (provider) => provider.coverage === "global",
+        ),
+      );
+      continue;
+    }
+
     // Pass 1: on-site/hybrid limited to the target region (per département).
     for (const location of REGION_SEARCH_LOCATIONS) {
       merge(
         await runOfferSync(
           user.id,
           { query, location, limit },
-          (offer) => isInRegion(offer.location),
+          (offer) => isDevJobTitle(offer.title) && isInRegion(offer.location),
           (provider) => provider.coverage !== "global",
         ),
       );
     }
 
-    // Pass 2: nationwide — keep only full-remote offers.
+    // Pass 2: full remote France uniquement — providers FR, l'Europe est
+    // couverte par la recherche dédiée (scope "europe").
     if (remoteEverywhere) {
       merge(
         await runOfferSync(
           user.id,
           { query, limit },
-          (offer) => offer.remote === "REMOTE",
+          (offer) =>
+            isDevJobTitle(offer.title) &&
+            offer.remote === "REMOTE" &&
+            !isEuropeLocation(offer.location),
+          (provider) => provider.coverage !== "global",
         ),
       );
     }
@@ -236,6 +269,7 @@ export async function syncOffersForCurrentUser({
       queries: keywords,
       region: REGION_SEARCH_LOCATIONS,
       remoteEverywhere,
+      scope,
     },
   });
 
@@ -252,7 +286,9 @@ export async function syncOffersForCurrentUser({
 export async function syncOffersForOwner(
   params: ProviderSearchParams,
 ): Promise<SyncResult> {
-  return runOfferSync(await getOwnerUserId(), params);
+  return runOfferSync(await getOwnerUserId(), params, (offer) =>
+    isDevJobTitle(offer.title),
+  );
 }
 
 // ---------------------------------------------------------------------------

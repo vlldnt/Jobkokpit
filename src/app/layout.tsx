@@ -34,7 +34,9 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full">
+      {/* suppressHydrationWarning : des extensions navigateur (ColorZilla…)
+          injectent des attributs dans <body> avant l'hydratation React. */}
+      <body className="min-h-full" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
