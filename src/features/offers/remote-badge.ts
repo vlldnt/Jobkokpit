@@ -1,9 +1,8 @@
 import type { BadgeProps } from "@/components/ui/badge";
 
 /**
- * Badge de modalité de travail. Le full télétravail est mis en avant
- * ("Distanciel full") avec une couleur dédiée ; les autres modalités restent
- * discrètes.
+ * Badge de modalité de travail, identifiable d'un coup d'œil :
+ * vert = 100 % télétravail, orange = hybride, gris = sur site.
  */
 export function remoteBadge(remote: string): {
   label: string;
@@ -11,9 +10,9 @@ export function remoteBadge(remote: string): {
 } {
   switch (remote) {
     case "REMOTE":
-      return { label: "Distanciel full", variant: "remote" };
+      return { label: "Télétravail", variant: "remote" };
     case "HYBRID":
-      return { label: "Hybride", variant: "warning" };
+      return { label: "Hybride", variant: "hybrid" };
     case "ONSITE":
       return { label: "Sur site", variant: "outline" };
     default:

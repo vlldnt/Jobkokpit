@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useOptimistic, useTransition } from "react";
-import { Heart, Pencil, ThumbsDown, Trash2 } from "lucide-react";
+import { ExternalLink, Heart, Pencil, ThumbsDown, Trash2 } from "lucide-react";
 
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   toggleInterestedAction,
 } from "../application-actions";
 import { contractBadge } from "../contract-kind";
+import { isEuropeLocation } from "../region";
 import { remoteBadge } from "../remote-badge";
 
 export type OfferRow = {
@@ -31,6 +32,7 @@ export type OfferRow = {
   remote: string;
   location: string | null;
   contractType: string | null;
+  url: string | null;
   interested: boolean;
   updatedAt: Date;
   company: { name: string } | null;
@@ -92,7 +94,7 @@ export function OffersTable({ offers }: { offers: OfferRow[] }) {
           <TableHead>Contrat</TableHead>
           <TableHead>Télétravail</TableHead>
           <TableHead>Statut</TableHead>
-          <TableHead className="w-40 text-right">Actions</TableHead>
+          <TableHead className="w-48 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -102,7 +104,12 @@ export function OffersTable({ offers }: { offers: OfferRow[] }) {
           return (
             <TableRow key={o.id} data-pending={isPending ? "" : undefined}>
               <TableCell className="font-medium">
-                <Link href={`/offers/${o.id}`} className="hover:underline">
+                {/* Nouvel onglet : la liste reste ouverte pour y revenir. */}
+                <Link
+                  href={`/offers/${o.id}`}
+                  target="_blank"
+                  className="hover:underline"
+                >
                   {o.title}
                 </Link>
               </TableCell>
@@ -110,7 +117,12 @@ export function OffersTable({ offers }: { offers: OfferRow[] }) {
                 {o.company?.name ?? "—"}
               </TableCell>
               <TableCell className="text-muted-foreground">
-                {o.location ?? "—"}
+                <span className="inline-flex items-center gap-1.5">
+                  {o.location ?? "—"}
+                  {isEuropeLocation(o.location) && (
+                    <Badge variant="europe">Europe</Badge>
+                  )}
+                </span>
               </TableCell>
               <TableCell>
                 <Badge variant={c.variant}>{c.label}</Badge>
@@ -125,6 +137,19 @@ export function OffersTable({ offers }: { offers: OfferRow[] }) {
               </TableCell>
               <TableCell>
                 <div className="flex justify-end gap-1">
+                  {o.url && (
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Voir l'annonce (nouvel onglet)"
+                      title="Voir l'annonce (nouvel onglet)"
+                    >
+                      <a href={o.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink />
+                      </a>
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"

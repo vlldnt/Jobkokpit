@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { labelFor } from "@/lib/enums";
 import { contractBadge } from "@/features/offers/contract-kind";
+import { isEuropeLocation } from "@/features/offers/region";
 import { remoteBadge } from "@/features/offers/remote-badge";
 import { extractContact } from "@/features/offers/contact-extract";
 import { AnalyzeButton } from "@/features/offers/components/analyze-button";
@@ -86,6 +87,9 @@ export default async function OfferDetailPage({
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <Badge variant={contract.variant}>{contract.label}</Badge>
         <Badge variant={remote.variant}>{remote.label}</Badge>
+        {isEuropeLocation(offer.location) && (
+          <Badge variant="europe">Europe</Badge>
+        )}
         <Badge>{labelFor("offerStatus", offer.status)}</Badge>
         <Badge variant="outline">{labelFor("offerSource", offer.source)}</Badge>
         {offer.url && (
@@ -100,7 +104,14 @@ export default async function OfferDetailPage({
 
       {/* Tuiles d'informations */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Tile label="Ville">{offer.location ?? "—"}</Tile>
+        <Tile label="Ville">
+          <span className="inline-flex items-center gap-1.5">
+            {offer.location ?? "—"}
+            {isEuropeLocation(offer.location) && (
+              <Badge variant="europe">Europe</Badge>
+            )}
+          </span>
+        </Tile>
         <Tile label="Télétravail">
           <Badge variant={remote.variant}>{remote.label}</Badge>
         </Tile>

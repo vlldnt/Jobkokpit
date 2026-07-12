@@ -10,6 +10,7 @@ import {
 } from "@/core/errors/app-error";
 import { getCompany } from "@/features/companies/repository";
 import * as repo from "./repository";
+import type { OfferQuickFilter } from "./quick-filters";
 import type { OfferInput } from "./schemas";
 
 /** Resolve & authorize the linked company, returning its name for dedup. */
@@ -27,6 +28,7 @@ export async function listOffers(params: {
   skip: number;
   take: number;
   search?: string;
+  filter?: OfferQuickFilter;
 }) {
   const user = await requireUser();
   return repo.listOffers(user.id, params);

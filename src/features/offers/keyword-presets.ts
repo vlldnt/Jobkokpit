@@ -106,18 +106,9 @@ export const DEV_KEYWORD_PRESETS = [
 ] as const;
 
 /**
- * Sélection pré-cochée par défaut dans le formulaire de synchro (modifiable).
- * Volontairement restreinte : chaque mot-clé déclenche une recherche par
- * département + une passe remote, donc trop de mots-clés ralentit la synchro.
- * Les autres presets restent proposés en suggestions.
+ * Sélection pré-cochée par défaut dans le formulaire de synchro (modifiable) :
+ * tous les mots-clés du développement informatique, aucun à rajouter à la main.
+ * Chaque mot-clé déclenche une recherche par département + une passe remote,
+ * la synchro complète est donc plus longue mais couvre tout le métier.
  */
-export const DEFAULT_DEV_KEYWORDS: string[] = [
-  "Développeur Full Stack",
-  "Développeur Front-End",
-  "Développeur Back-End",
-  "Développeur Web",
-  "Développeur React",
-  "Développeur Node.js",
-  "Développeur Python",
-  "Ingénieur logiciel",
-];
+export const DEFAULT_DEV_KEYWORDS: string[] = [...new Set(DEV_KEYWORD_PRESETS)];

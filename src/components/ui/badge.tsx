@@ -29,9 +29,14 @@ const badgeVariants = cva(
         cdd: "border-transparent bg-sky-500/15 text-sky-700 dark:text-sky-300",
         freelance:
           "border-transparent bg-teal-500/15 text-teal-700 dark:text-teal-300",
-        // Télétravail full — badge bien visible.
+        // Modalités de travail — vert (télétravail), orange (hybride).
         remote:
-          "border-transparent bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+          "border-transparent bg-green-500/15 text-green-700 dark:text-green-400",
+        hybrid:
+          "border-transparent bg-orange-500/15 text-orange-700 dark:text-orange-300",
+        // Offres hors France (Europe) — repère géographique.
+        europe:
+          "border-transparent bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
       },
     },
     defaultVariants: { variant: "default" },

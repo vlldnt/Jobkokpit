@@ -8,13 +8,20 @@ export function SearchForm({
   basePath,
   placeholder,
   defaultValue,
+  hiddenParams,
 }: {
   basePath: string;
   placeholder?: string;
   defaultValue?: string;
+  /** Paramètres d'URL à préserver lors de la recherche (ex. filtre rapide). */
+  hiddenParams?: Record<string, string>;
 }) {
   return (
     <form action={basePath} className="mb-4 flex max-w-sm gap-2">
+      {Object.entries(hiddenParams ?? {}).map(
+        ([key, value]) =>
+          value && <input key={key} type="hidden" name={key} value={value} />,
+      )}
       <Input
         name="q"
         type="search"

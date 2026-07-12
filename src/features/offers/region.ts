@@ -17,7 +17,7 @@ export const REGION_SEARCH_LOCATIONS = [
 const REGION_DEPT_CODES = ["12", "81", "46", "48", "15"];
 
 /** Villes principales par département (déjà normalisées : minuscules, sans accents). */
-const REGION_CITIES = [
+export const REGION_CITIES = [
   // Aveyron (12)
   "rodez",
   "millau",
@@ -83,4 +83,149 @@ export function isInRegion(location: string | null | undefined): boolean {
   if (/\blot\b(?!-et-garonne)/.test(h)) return true;
 
   return REGION_CITIES.some((c) => h.includes(c));
+}
+
+/**
+ * Pays et grandes villes d'Europe (hors France), normalisés (minuscules, sans
+ * accents). Sert au badge "Europe" et au filtre rapide de la liste des offres.
+ * Les tokens sont choisis pour ne pas matcher par substring des localités
+ * françaises courantes.
+ */
+export const EUROPE_LOCATION_TOKENS = [
+  "germany",
+  "deutschland",
+  "allemagne",
+  "berlin",
+  "munich",
+  "munchen",
+  "hamburg",
+  "frankfurt",
+  "cologne",
+  "koln",
+  "austria",
+  "autriche",
+  "vienna",
+  "wien",
+  "belgium",
+  "belgique",
+  "belgie",
+  "brussels",
+  "bruxelles",
+  "antwerp",
+  "netherlands",
+  "pays-bas",
+  "amsterdam",
+  "rotterdam",
+  "utrecht",
+  "spain",
+  "espagne",
+  "espana",
+  "madrid",
+  "barcelona",
+  "barcelone",
+  "valencia",
+  "portugal",
+  "lisbon",
+  "lisbonne",
+  "lisboa",
+  "porto",
+  "italy",
+  "italie",
+  "italia",
+  "milan",
+  "rome",
+  "roma",
+  "turin",
+  "poland",
+  "pologne",
+  "warsaw",
+  "varsovie",
+  "krakow",
+  "cracovie",
+  "wroclaw",
+  "gdansk",
+  "ireland",
+  "irlande",
+  "dublin",
+  "luxembourg",
+  "switzerland",
+  "suisse",
+  "schweiz",
+  "zurich",
+  "geneva",
+  "geneve",
+  "lausanne",
+  "united kingdom",
+  "royaume-uni",
+  "london",
+  "londres",
+  "manchester",
+  "edinburgh",
+  "sweden",
+  "suede",
+  "stockholm",
+  "gothenburg",
+  "denmark",
+  "danemark",
+  "copenhagen",
+  "copenhague",
+  "norway",
+  "norvege",
+  "oslo",
+  "finland",
+  "finlande",
+  "helsinki",
+  "czech",
+  "tchequie",
+  "prague",
+  "praha",
+  "hungary",
+  "hongrie",
+  "budapest",
+  "romania",
+  "roumanie",
+  "bucharest",
+  "bucarest",
+  "bulgaria",
+  "bulgarie",
+  "sofia",
+  "croatia",
+  "croatie",
+  "zagreb",
+  "slovakia",
+  "slovaquie",
+  "bratislava",
+  "slovenia",
+  "slovenie",
+  "ljubljana",
+  "estonia",
+  "estonie",
+  "tallinn",
+  "latvia",
+  "lettonie",
+  "riga",
+  "lithuania",
+  "lituanie",
+  "vilnius",
+  "greece",
+  "grece",
+  "athens",
+  "athenes",
+  "malta",
+  "malte",
+  "cyprus",
+  "chypre",
+  "europe",
+  "emea",
+];
+
+/**
+ * True si la localisation pointe vers l'Europe hors France : sert à afficher
+ * le badge "Europe" directement dans la liste et le détail d'une offre.
+ */
+export function isEuropeLocation(location: string | null | undefined): boolean {
+  if (!location) return false;
+  const h = norm(location);
+  if (/\bfrance\b/.test(h)) return false;
+  return EUROPE_LOCATION_TOKENS.some((t) => h.includes(t));
 }

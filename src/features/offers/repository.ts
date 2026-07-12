@@ -9,6 +9,12 @@ import type {
 } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import {
+  EUROPE_LOCATION_TOKENS,
+  REGION_CITIES,
+  REGION_SEARCH_LOCATIONS,
+} from "./region";
+import type { OfferQuickFilter } from "./quick-filters";
 import type { OfferInput } from "./schemas";
 
 const activeWhere = (userId: string): Prisma.JobOfferWhereInput => ({
@@ -37,14 +43,82 @@ function toData(input: OfferInput, dedupHash: string) {
   };
 }
 
+/** OR "contains" (insensible à la casse) sur contractType + intitulé. */
+const contractContains = (words: string[]): Prisma.JobOfferWhereInput => ({
+  OR: words.flatMap((w) => [
+    { contractType: { contains: w, mode: "insensitive" as const } },
+    { title: { contains: w, mode: "insensitive" as const } },
+  ]),
+});
+
+const locationContains = (tokens: readonly string[]) =>
+  tokens.map((t) => ({
+    location: { contains: t, mode: "insensitive" as const },
+  }));
+
+/**
+ * Clause Prisma d'un filtre rapide. Les filtres contrat/zone matchent par
+ * "contains" sur du texte libre : approximation volontaire alignée sur les
+ * heuristiques d'affichage (contract-kind, region).
+ */
+function quickFilterWhere(filter: OfferQuickFilter): Prisma.JobOfferWhereInput {
+  switch (filter) {
+    case "remote":
+      return { remote: "REMOTE" };
+    case "hybrid":
+      return { remote: "HYBRID" };
+    case "onsite":
+      return { remote: "ONSITE" };
+    case "region":
+      return {
+        OR: [
+          ...locationContains(REGION_SEARCH_LOCATIONS),
+          ...locationContains(REGION_CITIES),
+          // Format France Travail "12 - RODEZ".
+          ...["12", "81", "46", "48", "15"].map((code) => ({
+            location: { startsWith: `${code} ` },
+          })),
+        ],
+      };
+    case "europe":
+      return {
+        OR: locationContains(EUROPE_LOCATION_TOKENS),
+        NOT: { location: { contains: "france", mode: "insensitive" } },
+      };
+    case "cdi":
+      return contractContains(["cdi", "permanent"]);
+    case "cdd":
+      return contractContains(["cdd", "fixed-term", "temporaire"]);
+    case "stage":
+      return contractContains(["stage", "stagiaire", "internship"]);
+    case "alternance":
+      return contractContains(["alternance", "alternant", "apprenti"]);
+    case "freelance":
+      return contractContains([
+        "freelance",
+        "indépendant",
+        "independant",
+        "independent",
+        "portage",
+      ]);
+  }
+}
+
 export async function listOffers(
   userId: string,
   {
     skip,
     take,
     search,
+    filter,
     favorites = false,
-  }: { skip: number; take: number; search?: string; favorites?: boolean },
+  }: {
+    skip: number;
+    take: number;
+    search?: string;
+    filter?: OfferQuickFilter;
+    favorites?: boolean;
+  },
 ) {
   const where: Prisma.JobOfferWhereInput = {
     ...activeWhere(userId),
@@ -52,6 +126,7 @@ export async function listOffers(
     dismissed: false,
     ...(favorites ? { interested: true } : {}),
     ...(search ? { title: { contains: search, mode: "insensitive" } } : {}),
+    ...(filter ? { AND: [quickFilterWhere(filter)] } : {}),
   };
 
   const [items, total] = await Promise.all([
@@ -67,6 +142,7 @@ export async function listOffers(
         remote: true,
         location: true,
         contractType: true,
+        url: true,
         interested: true,
         updatedAt: true,
         company: { select: { name: true } },

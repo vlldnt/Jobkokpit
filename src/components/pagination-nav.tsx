@@ -2,9 +2,17 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
-function buildHref(basePath: string, page: number, query?: string): string {
+function buildHref(
+  basePath: string,
+  page: number,
+  query?: string,
+  extraParams?: Record<string, string>,
+): string {
   const params = new URLSearchParams();
   if (query) params.set("q", query);
+  for (const [key, value] of Object.entries(extraParams ?? {})) {
+    if (value) params.set(key, value);
+  }
   if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `${basePath}?${qs}` : basePath;
@@ -15,11 +23,14 @@ export function PaginationNav({
   page,
   totalPages,
   query,
+  extraParams,
 }: {
   basePath: string;
   page: number;
   totalPages: number;
   query?: string;
+  /** Paramètres d'URL à préserver entre les pages (ex. filtre rapide). */
+  extraParams?: Record<string, string>;
 }) {
   if (totalPages <= 1) return null;
 
@@ -39,7 +50,9 @@ export function PaginationNav({
           disabled={!hasPrev}
         >
           {hasPrev ? (
-            <Link href={buildHref(basePath, page - 1, query)}>Précédent</Link>
+            <Link href={buildHref(basePath, page - 1, query, extraParams)}>
+              Précédent
+            </Link>
           ) : (
             <span>Précédent</span>
           )}
@@ -51,7 +64,9 @@ export function PaginationNav({
           disabled={!hasNext}
         >
           {hasNext ? (
-            <Link href={buildHref(basePath, page + 1, query)}>Suivant</Link>
+            <Link href={buildHref(basePath, page + 1, query, extraParams)}>
+              Suivant
+            </Link>
           ) : (
             <span>Suivant</span>
           )}
